@@ -1,0 +1,27 @@
+{
+  "name": "short_loop",
+  "label": "stable",
+  "note": "Five turns cannot trip a 3-warmup, 3-window ratio check. The first possible ratio step is 6.",
+  "warmup_turns": 3,
+  "window": 3,
+  "token_budget": 100000,
+  "budget_gate": 0,
+  "ratio_threshold": 2.0,
+  "turns": [
+    {
+      "tokens_used": 1000
+    },
+    {
+      "tokens_used": 1000
+    },
+    {
+      "tokens_used": 1000
+    },
+    {
+      "tokens_used": 9000
+    },
+    {
+      "tokens_used": 9000
+    }
+  ]
+}

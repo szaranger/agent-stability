@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
 
 from agent_stability.guard import (
     PATTERN_BUDGET_EXHAUSTION,
@@ -31,21 +33,73 @@ class Example:
     ratio_threshold: float = 2.0
 
 
-def run_example(example: Example) -> str:
-    """Replay an example and return the pattern the guard actually assigned."""
+def run_example(
+    example: Example,
+    *,
+    ratio_threshold: float | None = None,
+    max_turns: int | None = None,
+) -> str:
+    """Replay an example and return the pattern the guard actually assigned.
+
+    ``ratio_threshold`` replaces the example's cutoff. ``max_turns`` keeps
+    only the first turns of the trajectory.
+    """
+    turns = example.turns if max_turns is None else example.turns[:max_turns]
     guard = StabilityGuard(
         token_budget=example.token_budget,
-        ratio_threshold=example.ratio_threshold,
+        ratio_threshold=example.ratio_threshold if ratio_threshold is None else ratio_threshold,
         window=example.window,
         warmup_turns=example.warmup_turns,
         budget_gate=example.budget_gate,
     )
-    for turn in example.turns:
+    for turn in turns:
         try:
             guard.record_step(**turn)
         except StabilityViolation:
             break
     return guard.trip_pattern or PATTERN_STABLE
+
+
+def load_corpus(path: str | Path) -> tuple[Example, ...]:
+    """Load ``*.json`` trajectories from a directory."""
+    directory = Path(path)
+    if not directory.is_dir():
+        raise FileNotFoundError(f"corpus directory not found: {directory}")
+    files = sorted(path for path in directory.glob("*.json") if path.is_file())
+    if not files:
+        raise FileNotFoundError(f"no JSON trajectories in {directory}")
+    return tuple(_example_from_json(file) for file in files)
+
+
+def _example_from_json(path: Path) -> Example:
+    try:
+        payload = json.loads(path.read_text())
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{path.name} is not valid JSON") from exc
+    if not isinstance(payload, dict):
+        raise ValueError(f"{path.name} must be an object")
+    turns = payload.get("turns")
+    if not isinstance(turns, list) or not turns:
+        raise ValueError(f"{path.name}: turns must be a non-empty list")
+    normalized: list[dict] = []
+    for turn in turns:
+        if isinstance(turn, int) and not isinstance(turn, bool):
+            normalized.append({"tokens_used": turn})
+        elif isinstance(turn, dict):
+            normalized.append(turn)
+        else:
+            raise ValueError(f"{path.name}: each turn must be an int or an object")
+    return Example(
+        name=str(payload.get("name") or path.stem),
+        label=str(payload.get("label", "")),
+        turns=tuple(normalized),
+        note=str(payload.get("note", "")),
+        warmup_turns=int(payload.get("warmup_turns", 3)),
+        window=int(payload.get("window", 3)),
+        token_budget=int(payload.get("token_budget", 100_000)),
+        budget_gate=int(payload.get("budget_gate", 0)),
+        ratio_threshold=float(payload.get("ratio_threshold", 2.0)),
+    )
 
 
 CORPUS: tuple[Example, ...] = (

@@ -1,0 +1,45 @@
+{
+  "name": "retry_storm",
+  "label": "retry_storm",
+  "note": "The same tool arguments fail on every turn in the window.",
+  "warmup_turns": 3,
+  "window": 3,
+  "token_budget": 100000,
+  "budget_gate": 0,
+  "ratio_threshold": 2.0,
+  "turns": [
+    {
+      "tokens_used": 100
+    },
+    {
+      "tokens_used": 100
+    },
+    {
+      "tokens_used": 100
+    },
+    {
+      "tokens_used": 120,
+      "errors": 1,
+      "tool_name": "search",
+      "tool_arguments": {
+        "q": "tide"
+      }
+    },
+    {
+      "tokens_used": 180,
+      "errors": 1,
+      "tool_name": "search",
+      "tool_arguments": {
+        "q": "tide"
+      }
+    },
+    {
+      "tokens_used": 900,
+      "errors": 1,
+      "tool_name": "search",
+      "tool_arguments": {
+        "q": "tide"
+      }
+    }
+  ]
+}

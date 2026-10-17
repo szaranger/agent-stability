@@ -1,4 +1,9 @@
 import json
+import runpy
+import sys
+from pathlib import Path
+
+import pytest
 
 from agent_stability import FailureReport, StabilityGuard, StabilityViolation
 from agent_stability.cli import main
@@ -79,3 +84,42 @@ def test_simulate_command(capsys):
     output = capsys.readouterr().out
     assert "context_spiral" in output
     assert "Stability tripped at step 7" in output
+
+
+def test_corpus_command_accepts_safety_k(capsys, tmp_path):
+    source = Path(__file__).parents[1] / "examples"
+    code = main(["--corpus", str(source), "--safety-k", "0.92"])
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "safety-k 0.92" in output
+    assert "ratio cutoff 1.84" in output
+    assert "context_spiral  context_spiral" in output
+    assert "healthy_growth  stable" in output
+    assert "expected" not in output
+
+    missing = main(["--corpus", str(tmp_path / "missing"), "--safety-k", "0.92"])
+    assert missing == 2
+
+
+def test_max_turns_command(capsys):
+    assert main(["--max-turns", "10", "--safety-k", "0.90"]) == 0
+    output = capsys.readouterr().out
+    assert "safety-k 0.9" in output
+    assert "ratio cutoff 1.80" in output
+    assert "max turns 10" in output
+    assert "context_spiral  context_spiral" in output
+
+
+def test_module_help(capsys, monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["agent_stability", "--help"])
+
+    with pytest.raises(SystemExit) as exc:
+        runpy.run_module("agent_stability", run_name="__main__")
+
+    assert exc.value.code == 0
+    output = capsys.readouterr().out
+    assert "simulate" in output
+    assert "region" in output
+    assert "--corpus" in output
+    assert "--safety-k" in output
