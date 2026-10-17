@@ -22,4 +22,4 @@ python -m agent_stability --corpus ./examples --safety-k 0.92
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Apache-2.0. See [LICENSE](LICENSE).
